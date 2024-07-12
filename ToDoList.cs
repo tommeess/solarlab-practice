@@ -18,7 +18,15 @@ namespace ToDoListApp
 
         public void AddTask(string title)
         {
-            tasks.Add(new Task(title) { Id = nextId++ });
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                throw new ArgumentNullException("Задача не может быть без названия");
+            }
+            else
+            {
+                tasks.Add(new Task(title) { Id = nextId++ });
+            }
+
         }
 
         public void RemoveTask(int taskId)
@@ -27,12 +35,26 @@ namespace ToDoListApp
             if (task != null)
             {
                 tasks.Remove(task);
-                Console.WriteLine("Задача удалена!");
             }
             else
             {
-                Console.WriteLine($"Задача с ID {taskId} не найдена");
+                throw new InvalidOperationException($"Задача с ID {taskId} не найдена");
             }
+        }
+
+        public List<Task> GetAllTasks()
+        {
+            return tasks;
+        }
+
+        public List<Task> GetCompletedTasks()
+        {
+            return tasks.Where(t => t.IsDone).ToList();
+        }
+
+        public List<Task> GetIncompleteTasks()
+        {
+            return tasks.Where(t => !t.IsDone).ToList();
         }
 
         public void MarkTaskAsCompleted(int taskId)
@@ -44,59 +66,7 @@ namespace ToDoListApp
             }
             else
             {
-                Console.WriteLine("Неверно указан номер задачи");
-            }
-        }
-
-        public void ViewTasks()
-        {
-            if (tasks == null)
-            {
-                Console.WriteLine("Тут ничего нет :(");
-                return;
-            }
-            else
-            {
-                Console.WriteLine("Список задач:");
-                foreach (var task in tasks)
-                {
-                    Console.WriteLine($"{task.Id}. {task.Title} {(task.IsDone ? " (Х)" : "")}");
-                }
-            }
-        }
-
-        public void ViewCompletedTasks() {
-            var completedTasks = tasks.FindAll(i => i.IsDone);
-            if (completedTasks.Count == 0)
-            {
-                Console.WriteLine("Нет выполненных задач");
-                return;
-            }
-            else
-            {
-                Console.WriteLine("Выполненные задачи:");
-                foreach (var task in completedTasks)
-                {
-                    Console.WriteLine($"{task.Id}. {task.Title}");
-                }
-            }
-        }
-
-        public void ViewUncompletedTasks()
-        {
-            var completedTasks = tasks.FindAll(i => !i.IsDone);
-            if (completedTasks.Count == 0)
-            {
-                Console.WriteLine("Нет невыполненных задач");
-                return;
-            }
-            else
-            {
-                Console.WriteLine("Невыполненные задачи:");
-                foreach (var task in completedTasks)
-                {
-                    Console.WriteLine($"{task.Id}. {task.Title}");
-                }
+                throw new InvalidOperationException($"Задача с ID {taskId} не найдена");
             }
         }
 
@@ -104,53 +74,47 @@ namespace ToDoListApp
         {
             if (!File.Exists(filePath))
             {
-                return;
+                throw new InvalidOperationException("Файл не существует");
             }
-            try
+
+            using (StreamWriter writer = new StreamWriter(filePath))
             {
-                using (StreamWriter writer = new StreamWriter(filePath))
+                foreach (var task in tasks)
                 {
-                    foreach(var task in tasks)
-                    {
-                        writer.WriteLine($"{task.Id}. {task.Title} {(task.IsDone ? " (X)" : "")}");
-                    }
+                    writer.WriteLine($"{task.Id}. {task.Title} {(task.IsDone ? " (X)" : "")}");
                 }
-                Console.WriteLine("Список задач сохранен в файл");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при сохранении списка задач в файл: {ex.Message}");
             }
         }
+
 
         public void LoadFromFile(string filePath)
         {
             if (!File.Exists(filePath))
             {
-                return;
+                throw new InvalidOperationException("Файл не существует");
             }
-            try
+
+            using (StreamReader reader = new StreamReader(filePath))
             {
-                using (StreamReader reader=new StreamReader(filePath))
+                string line;
+                while ((line = reader.ReadLine()) != null)
                 {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
+                    string[] parts = line.Split('.');
+                    if (parts.Length == 3)
                     {
-                        string[] parts = line.Split('.');
-                        if (parts.Length == 3)
+                        int id = int.Parse(parts[0].Trim());
+                        string title = parts[1].Trim();
+                        bool isDone = bool.Parse(parts[2].Trim());
+                        Task task = new Task(title)
                         {
-                            int id = int.Parse(parts[0].Trim());
-                            string title = parts[1].Trim();
-                            bool isDone = bool.Parse(parts[2].Trim());
-                            tasks.Add(new Task(title) { Id = id, IsDone = isDone });
-                        }
+                            Id = id,
+                            IsDone = isDone
+                        };
+                            tasks.Add(task);    
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при загрузке списка задач: {ex.Message} ");
             }
         }
     }
 }
+
